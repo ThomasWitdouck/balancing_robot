@@ -21,11 +21,11 @@ typedef struct TCP_SERVER_T_ {
     struct tcp_pcb *server_pcb;
     struct tcp_pcb *client_pcb;
     bool complete;
+    bool running;
     uint8_t buffer_sent[BUF_SIZE];
     uint8_t buffer_recv[BUF_SIZE];
     int sent_len;
     int recv_len;
-    int run_count;
 } TCP_SERVER_T;
 
 TCP_SERVER_T* tcp_server_init(void);
@@ -44,10 +44,10 @@ static err_t tcp_server_poll(void *arg, struct tcp_pcb *tpcb);
 
 static void tcp_server_err(void *arg, err_t err);
 
-err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err);
+static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err);
 
 bool tcp_server_open(void *arg);
 
-void run_tcp_server_test(void);
+void run_tcp_server(TCP_SERVER_T* state);
 
 #endif // _PICO_SERVER_

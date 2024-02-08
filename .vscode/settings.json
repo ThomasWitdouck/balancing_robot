@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "unique_id.h": "c"
+        "unique_id.h": "c",
+        "pbuf.h": "c",
+        "cyw43_arch.h": "c"
     }
 }

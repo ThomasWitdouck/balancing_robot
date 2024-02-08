@@ -2,6 +2,10 @@
 
 import socket
 import sys
+import time
+import threading
+
+mutex1 = threading.Lock()
 
 # Check server ip address set
 if len(sys.argv) < 2:
@@ -21,7 +25,11 @@ addr = (SERVER_ADDR, SERVER_PORT)
 sock.connect(addr)
 
 # Repeat test for a number of iterations
-for test_iteration in range(TEST_ITERATIONS):
+while 1:
+
+
+    # First lock this code
+    mutex1.acquire(1)
 
     # Read BUF_SIZE bytes from the server
     total_size = BUF_SIZE
@@ -47,6 +55,12 @@ for test_iteration in range(TEST_ITERATIONS):
     print('written %d bytes to server' % write_len)
     if write_len != BUF_SIZE:
         raise RuntimeError('wrong amount of data written')
+
+    # Now unlock the code
+    mutex1.release()
+
+    time.sleep(1)
+    
 
 # All done
 sock.close()

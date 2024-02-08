@@ -10718,6 +10718,7 @@ CMakeFiles/pico.dir/src/main.c.obj: ../src/main.c \
   ../lib/pico-sdk/lib/lwip/src/include/lwip/prot/icmp.h
 
 CMakeFiles/pico.dir/src/pico_server/pico_server.c.obj: ../src/pico_server/pico_server.c \
+  ../include/server/pico_server.h \
   /usr/include/newlib/string.h \
   /usr/include/newlib/_ansi.h \
   /usr/include/newlib/newlib.h \

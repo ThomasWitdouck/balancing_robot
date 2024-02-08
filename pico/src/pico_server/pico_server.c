@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include "server/pico_server.h"
+
 #include <string.h>
 #include <stdlib.h>
 
@@ -13,22 +15,6 @@
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 
-#define TCP_PORT 4242
-#define DEBUG_printf printf
-#define BUF_SIZE 10
-#define TEST_ITERATIONS 1
-#define POLL_TIME_S 5
-
-typedef struct TCP_SERVER_T_ {
-    struct tcp_pcb *server_pcb;
-    struct tcp_pcb *client_pcb;
-    bool complete;
-    uint8_t buffer_sent[BUF_SIZE];
-    uint8_t buffer_recv[BUF_SIZE];
-    int sent_len;
-    int recv_len;
-    int run_count;
-} TCP_SERVER_T;
 
 TCP_SERVER_T* tcp_server_init(void) {
     TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
@@ -62,6 +48,9 @@ static err_t tcp_server_close(void *arg) {
         tcp_close(state->server_pcb);
         state->server_pcb = NULL;
     }
+
+    state->running = false;
+
     return err;
 }
 
@@ -77,6 +66,7 @@ err_t tcp_server_result(void *arg, int status) {
 }
 
 static err_t tcp_server_sent(void *arg, struct tcp_pcb *tpcb, u16_t len) {
+    printf("In the send function");
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
     DEBUG_printf("tcp_server_sent %u\n", len);
     state->sent_len += len;
@@ -114,6 +104,7 @@ err_t tcp_server_send_data(void *arg, struct tcp_pcb *tpcb)
 }
 
 err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
+    printf("In the recv function");
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
     if (!p) {
         return tcp_server_result(arg, -1);
@@ -143,13 +134,6 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
         }
         DEBUG_printf("tcp_server_recv buffer ok\n");
 
-        // Test complete?
-        state->run_count++;
-        if (state->run_count >= TEST_ITERATIONS) {
-            tcp_server_result(arg, 0);
-            return ERR_OK;
-        }
-
         // Send another buffer
         return tcp_server_send_data(arg, state->client_pcb);
     }
@@ -157,11 +141,13 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
 }
 
 static err_t tcp_server_poll(void *arg, struct tcp_pcb *tpcb) {
+    printf("In the poll function");
     DEBUG_printf("tcp_server_poll_fn\n");
     return tcp_server_result(arg, -1); // no response is an error?
 }
 
 static void tcp_server_err(void *arg, err_t err) {
+    printf("In the err function");
     if (err != ERR_ABRT) {
         DEBUG_printf("tcp_client_err_fn %d\n", err);
         tcp_server_result(arg, err);
@@ -169,6 +155,7 @@ static void tcp_server_err(void *arg, err_t err) {
 }
 
 static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err) {
+    printf("Now in the accept function\n");
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
     if (err != ERR_OK || client_pcb == NULL) {
         DEBUG_printf("Failure in accept\n");
@@ -211,15 +198,15 @@ bool tcp_server_open(void *arg) {
         }
         return false;
     }
-
+    
     tcp_arg(state->server_pcb, state);
     tcp_accept(state->server_pcb, tcp_server_accept);
 
     return true;
 }
 
-void run_tcp_server_test(void) {
-    TCP_SERVER_T *state = tcp_server_init();
+void run_tcp_server(TCP_SERVER_T* state) {
+    state->running = true;
     if (!state) {
         return;
     }
@@ -227,28 +214,4 @@ void run_tcp_server_test(void) {
         tcp_server_result(state, -1);
         return;
     }
-
-    free(state);
 }
-
-// int main() {
-//     stdio_init_all();
-
-//     if (cyw43_arch_init()) {
-//         printf("failed to initialise\n");
-//         return 1;
-//     }
-
-//     cyw43_arch_enable_sta_mode();
-
-//     printf("Connecting to Wi-Fi...\n");
-//     if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-//         printf("failed to connect.\n");
-//         return 1;
-//     } else {
-//         printf("Connected.\n");
-//     }
-//     run_tcp_server_test();
-//     cyw43_arch_deinit();
-//     return 0;
-// }

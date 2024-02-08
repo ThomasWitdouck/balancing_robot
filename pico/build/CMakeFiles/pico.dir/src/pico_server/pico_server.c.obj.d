@@ -1,5 +1,6 @@
 CMakeFiles/pico.dir/src/pico_server/pico_server.c.obj: \
  /home/thomas/balancing_robot/pico/src/pico_server/pico_server.c \
+ /home/thomas/balancing_robot/pico/include/server/pico_server.h \
  /usr/include/newlib/string.h /usr/include/newlib/_ansi.h \
  /usr/include/newlib/newlib.h /usr/include/newlib/_newlib_version.h \
  /usr/include/newlib/sys/config.h /usr/include/newlib/machine/ieeefp.h \

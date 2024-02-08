@@ -69,24 +69,35 @@ void communication_thread(){
     
     printf("Connected to wifi.\n");
     
-    run_tcp_server_test();
+
+    TCP_SERVER_T* state = tcp_server_init();
+
+    
 
     //loop
     while (true) {
 
-    //Read and convert temperature.
-    temp_raw = adc_read();
-    temp_voltage = temp_raw * temp_conversion_rate;
-    temp = 27 - (temp_voltage - 0.706)/0.001721;
-    printf("Pico temperature: %f degrees Celsius.\n", temp);
+        //Read and convert temperature.
+        temp_raw = adc_read();
+        temp_voltage = temp_raw * temp_conversion_rate;
+        temp = 27 - (temp_voltage - 0.706)/0.001721;
+        printf("Pico temperature: %f degrees Celsius.\n", temp);
 
-    //Turn LED on and off
-    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
-    printf("LED on.\n");
-    sleep_ms(1000);
-    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-    printf("LED off.\n");
-    sleep_ms(1000);
+        //Turn LED on and off
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+        printf("LED on.\n");
+        sleep_ms(1000);
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
+        printf("LED off.\n");
+        sleep_ms(1000);
+
+
+        //Start server if it is offline.
+        if (!state->running)
+        {
+            run_tcp_server(state);
+        }
+        
 
     }
     
