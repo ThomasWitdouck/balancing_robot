@@ -1,2 +1,3 @@
 pico/build/
 .vscode/
+client/__pycache__/
