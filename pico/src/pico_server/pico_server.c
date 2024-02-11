@@ -22,7 +22,7 @@ TCP_SERVER_T* tcp_server_init(void) {
         DEBUG_printf("failed to allocate state\n");
         return NULL;
     }
-    printf("state allocated\n");
+    printf("server initialized\n");
     return state;
 }
 
@@ -50,6 +50,7 @@ static err_t tcp_server_close(void *arg) {
     }
 
     state->running = false;
+    printf("Server closed")
 
     return err;
 }
@@ -61,41 +62,39 @@ err_t tcp_server_result(void *arg, int status) {
     } else {
         DEBUG_printf("test failed %d\n", status);
     }
-    state->complete = true;
+
     return tcp_server_close(arg);
 }
 
 static err_t tcp_server_sent(void *arg, struct tcp_pcb *tpcb, u16_t len) {
-    printf("In the send function");
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
     DEBUG_printf("tcp_server_sent %u\n", len);
     state->sent_len += len;
 
-    if (state->sent_len >= BUF_SIZE) {
+    // if (state->sent_len >= BUF_SIZE_SEND) {
 
-        // We should get the data back from the client
-        state->recv_len = 0;
-        DEBUG_printf("Waiting for buffer from client\n");
-    }
+    //     // We should get the data back from the client
+    //     state->recv_len = 0;
+    //     DEBUG_printf("Waiting for buffer from client\n");
+    // }
 
     return ERR_OK;
 }
 
-err_t tcp_server_send_data(void *arg, struct tcp_pcb *tpcb)
-{
+err_t tcp_server_send_data(void *arg, struct tcp_pcb *tpcb) {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
-    for(int i=0; i< BUF_SIZE; i++) {
+    for(int i=0; i< BUF_SIZE_SEND; i++) {
         state->buffer_sent[i] = rand();
         printf("%u\n",state->buffer_sent[i]);
     }
 
     state->sent_len = 0;
-    DEBUG_printf("Writing %ld bytes to client\n", BUF_SIZE);
+    DEBUG_printf("Writing %ld bytes to client\n", BUF_SIZE_SEND);
     // this method is callback from lwIP, so cyw43_arch_lwip_begin is not required, however you
     // can use this method to cause an assertion in debug mode, if this method is called when
     // cyw43_arch_lwip_begin IS needed
     cyw43_arch_lwip_check();
-    err_t err = tcp_write(tpcb, state->buffer_sent, BUF_SIZE, TCP_WRITE_FLAG_COPY);
+    err_t err = tcp_write(tpcb, state->buffer_sent, BUF_SIZE_SEND, TCP_WRITE_FLAG_COPY);
     if (err != ERR_OK) {
         DEBUG_printf("Failed to write data %d\n", err);
         return tcp_server_result(arg, -1);
@@ -104,10 +103,9 @@ err_t tcp_server_send_data(void *arg, struct tcp_pcb *tpcb)
 }
 
 err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
-    printf("In the recv function");
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
     if (!p) {
-        return tcp_server_result(arg, -1);
+        return tcp_server_result(arg, -2);
     }
     // this method is callback from lwIP, so cyw43_arch_lwip_begin is not required, however you
     // can use this method to cause an assertion in debug mode, if this method is called when
@@ -117,7 +115,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
         DEBUG_printf("tcp_server_recv %d/%d err %d\n", p->tot_len, state->recv_len, err);
 
         // Receive the buffer
-        const uint16_t buffer_left = BUF_SIZE - state->recv_len;
+        const uint16_t buffer_left = BUF_SIZE_RECV - state->recv_len;
         state->recv_len += pbuf_copy_partial(p, state->buffer_recv + state->recv_len,
                                              p->tot_len > buffer_left ? buffer_left : p->tot_len, 0);
         tcp_recved(tpcb, p->tot_len);
@@ -125,41 +123,37 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     pbuf_free(p);
 
     // Have we have received the whole buffer
-    if (state->recv_len == BUF_SIZE) {
-
-        // check it matches
-        if (memcmp(state->buffer_sent, state->buffer_recv, BUF_SIZE) != 0) {
-            DEBUG_printf("buffer mismatch\n");
-            return tcp_server_result(arg, -1);
+    if (state->recv_len == BUF_SIZE_RECV) {
+        
+        printf("Received:\n");
+        for(int i = 0; i<BUF_SIZE_RECV; i++) {
+            printf("%u\n", state->buffer_recv[i]);    
         }
-        DEBUG_printf("tcp_server_recv buffer ok\n");
 
-        // Send another buffer
+        // Here we should choose what to do depending on received data from client
         return tcp_server_send_data(arg, state->client_pcb);
     }
     return ERR_OK;
 }
 
 static err_t tcp_server_poll(void *arg, struct tcp_pcb *tpcb) {
-    printf("In the poll function");
     DEBUG_printf("tcp_server_poll_fn\n");
-    return tcp_server_result(arg, -1); // no response is an error?
+    //return tcp_server_result(arg, -3); // no response is an error?
+    return ERR_OK;
 }
 
 static void tcp_server_err(void *arg, err_t err) {
-    printf("In the err function");
     if (err != ERR_ABRT) {
-        DEBUG_printf("tcp_client_err_fn %d\n", err);
-        tcp_server_result(arg, err);
+        DEBUG_printf("Connection with client lost. Error %d\n", err);
+        tcp_server_result(arg, -4);
     }
 }
 
 static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err) {
-    printf("Now in the accept function\n");
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
     if (err != ERR_OK || client_pcb == NULL) {
         DEBUG_printf("Failure in accept\n");
-        tcp_server_result(arg, err);
+        tcp_server_result(arg, -5);
         return ERR_VAL;
     }
     DEBUG_printf("Client connected\n");
@@ -171,7 +165,7 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
     tcp_poll(client_pcb, tcp_server_poll, POLL_TIME_S * 2);
     tcp_err(client_pcb, tcp_server_err);
 
-    return tcp_server_send_data(arg, state->client_pcb);
+    return ERR_OK;
 }
 
 bool tcp_server_open(void *arg) {
@@ -206,12 +200,14 @@ bool tcp_server_open(void *arg) {
 }
 
 void run_tcp_server(TCP_SERVER_T* state) {
-    state->running = true;
+    
     if (!state) {
+        state->running = false;
         return;
     }
+    state->running = true;
     if (!tcp_server_open(state)) {
-        tcp_server_result(state, -1);
+        tcp_server_result(state, -6);
         return;
     }
 }

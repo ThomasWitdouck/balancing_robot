@@ -13,17 +13,17 @@
 
 #define TCP_PORT 4242
 #define DEBUG_printf printf
-#define BUF_SIZE 10
+#define BUF_SIZE_SEND 10
+#define BUF_SIZE_RECV 2
 #define TEST_ITERATIONS 1
 #define POLL_TIME_S 5
 
 typedef struct TCP_SERVER_T_ {
     struct tcp_pcb *server_pcb;
     struct tcp_pcb *client_pcb;
-    bool complete;
     bool running;
-    uint8_t buffer_sent[BUF_SIZE];
-    uint8_t buffer_recv[BUF_SIZE];
+    uint8_t buffer_sent[BUF_SIZE_SEND];
+    uint8_t buffer_recv[BUF_SIZE_RECV];
     int sent_len;
     int recv_len;
 } TCP_SERVER_T;
